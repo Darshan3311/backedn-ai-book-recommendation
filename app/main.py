@@ -1,7 +1,8 @@
 # Create the main FastAPI application file
 # 1. Import FastAPI, CORSMiddleware, the `init_db` function, and the auth and recommendations routers
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.database import init_db
 from app.routers import auth_router, recommendations_router
@@ -51,7 +52,8 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:8080",
         "https://frontend-ai-book-recommendation-3.onrender.com",
-        "https://frontend-ai-book-recommendation.onrender.com"
+        "https://frontend-ai-book-recommendation.onrender.com",
+        "https://backedn-ai-book-recommendation.onrender.com"
     ],  # Frontend origins
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -97,19 +99,25 @@ async def health_check():
 
 # Error handlers
 @app.exception_handler(404)
-async def not_found_handler(request, exc):
-    return {
-        "detail": "Endpoint not found",
-        "message": "The requested endpoint does not exist. Check the API documentation at /docs"
-    }
+async def not_found_handler(request: Request, exc):
+    return JSONResponse(
+        status_code=404,
+        content={
+            "detail": "Endpoint not found",
+            "message": "The requested endpoint does not exist. Check the API documentation at /docs"
+        }
+    )
 
 
 @app.exception_handler(500)
-async def internal_error_handler(request, exc):
-    return {
-        "detail": "Internal server error",
-        "message": "An unexpected error occurred. Please try again later."
-    }
+async def internal_error_handler(request: Request, exc):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal server error",
+            "message": "An unexpected error occurred. Please try again later."
+        }
+    )
 
 
 if __name__ == "__main__":
