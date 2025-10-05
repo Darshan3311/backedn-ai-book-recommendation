@@ -5,11 +5,13 @@ import json
 import requests
 import re
 import hashlib
+import time
 from typing import List
 from app.schemas import BookQuery, Book
 from app.models.user import User
 from app.security import get_current_user
 from app.config import settings
+from app.services.gemini_service import GeminiService
 # Simple in-memory cache for book recommendations
 CACHE = {}
 CACHE_TTL = 3600  # 1 hour cache
@@ -222,77 +224,74 @@ async def get_quick_recommendations(
             detail=f"Quick recommendation error: {str(e)}"
         )
 
-# Simple working recommendations endpoint
+# Enhanced recommendations endpoint using GeminiService
 @router.post("/", response_model=List[Book])
 async def get_book_recommendations(
     query: BookQuery,
     current_user: User = Depends(get_current_user)
 ):
-    """Get book recommendations from Google Gemini AI"""
+    """Get book recommendations using enhanced GeminiService with proper filtering"""
     try:
-        # Simple prompt without complex filtering
-        prompt = f"""Recommend {query.count or 5} books for: "{query.query}"
-
-Return JSON format:
-{{
-  "books": [
-    {{
-      "title": "Book Title",
-      "author": "Author Name",
-      "genre": "Genre",
-      "brief_summary": "Brief summary",
-      "short_description": "Short description",
-      "isbn": null,
-      "publication_year": 2020,
-      "rating": 4.0,
-      "language": "English",
-      "age_group": "adult",
-      "target_audience": "general",
-      "book_type": "fiction",
-      "content_type": "entertainment",
-      "reading_level": "intermediate",
-      "page_count": 300,
-      "series_info": null
-    }}
-  ]
-}}"""
-
-        # Call Google Gemini API
-        response = model.generate_content(prompt)
+        print(f"🔍 Processing recommendation request:")
+        print(f"   Query: {query.query}")
+        print(f"   Count requested: {query.count} books")
+        print(f"   Language: {query.language}")
+        print(f"   Age Group: {query.age_group}")
+        print(f"   Book Type: {query.book_type}")
+        print(f"   Content Type: {query.content_type}")
+        print(f"   Reading Level: {query.reading_level}")
+        print(f"   🎯 MUST RETURN EXACTLY {query.count} BOOKS")
         
-        if not response.text:
-            raise HTTPException(status_code=500, detail="No response from AI")
-
-        # Parse response
-        response_text = response.text.strip()
-        if response_text.startswith("```"):
-            response_text = response_text.split("\n", 1)[1]
-        if response_text.endswith("```"):
-            response_text = response_text.rsplit("```", 1)[0]
+        # Build enhanced query string with filters
+        enhanced_query = query.query
+        filters = []
         
-        json_response = json.loads(response_text.strip())
+        if query.language and query.language != "none":
+            filters.append(f"in {query.language} language")
+        if query.age_group and query.age_group != "none":
+            filters.append(f"for {query.age_group} audience")
+        if query.book_type and query.book_type != "none":
+            filters.append(f"{query.book_type} books")
+        if query.content_type and query.content_type != "none":
+            filters.append(f"{query.content_type} format")
+        if query.reading_level and query.reading_level != "none":
+            filters.append(f"{query.reading_level} reading level")
         
-        # Create book objects
-        books = []
-        for book_data in json_response.get("books", []):
-            # Add reliable cover image that loads instantly
-            isbn_value = book_data.get("isbn")
-            if isbn_value and str(isbn_value).strip() and str(isbn_value).lower() != "null":
-                clean_isbn = re.sub(r'[-\s]', '', str(isbn_value).strip())
-                if clean_isbn and clean_isbn.lower() != "null":
-                    # Try OpenLibrary first for real book covers
-                    book_data["cover_image_url"] = f"https://covers.openlibrary.org/b/isbn/{clean_isbn}-L.jpg"
-                else:
-                    # Fallback to reliable data URI placeholder
-                    book_data["cover_image_url"] = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgdmlld0JveD0iMCAwIDMwMCA0NTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iNDUwIiBmaWxsPSIjNEE1NTY4Ii8+Cjx0ZXh0IHg9IjE1MCIgeT0iMjI1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjRkZGRkZGIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTgiPk5vIENvdmVyPC90ZXh0Pgo8L3N2Zz4="
-            else:
-                # No valid ISBN, use data URI placeholder for instant loading
-                book_data["cover_image_url"] = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgdmlld0JveD0iMCAwIDMwMCA0NTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iNDUwIiBmaWxsPSIjNEE1NTY4Ii8+Cjx0ZXh0IHg9IjE1MCIgeT0iMjI1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjRkZGRkZGIiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMTgiPk5vIENvdmVyPC90ZXh0Pgo8L3N2Zz4="
-            
-            book = Book(**book_data)
-            books.append(book)
-            
+        if filters:
+            enhanced_query += f" (specifically: {', '.join(filters)})"
+        
+        print(f"📝 Enhanced query: {enhanced_query}")
+        
+        # Check cache first
+        cache_key = get_cache_key(query)
+        cached_books = get_cached_books(cache_key)
+        if cached_books:
+            print(f"🎯 Returning {len(cached_books)} books from cache")
+            return cached_books
+        
+        # Use GeminiService for recommendations
+        requested_count = query.count if query.count and query.count > 0 else 20
+        print(f"📊 Requesting {requested_count} recommendations from Gemini")
+        
+        recommendation_response = await GeminiService.generate_recommendations(
+            user_query=enhanced_query,
+            max_recommendations=requested_count
+        )
+        
+        books = recommendation_response.recommendations
+        print(f"✅ Generated {len(books)} recommendations using GeminiService")
+        
+        # Cache the results
+        cache_books(cache_key, books)
+        
         return books
         
+    except HTTPException:
+        # Re-raise HTTPExceptions from GeminiService
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+        print(f"❌ Recommendation error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate recommendations: {str(e)}"
+        )

@@ -36,8 +36,15 @@ async def get_book_recommendations(
             detail="Query cannot be empty"
         )
     
+    # Use the requested_count property which handles both 'count' and 'max_recommendations'
     # Allow up to 150 books (reasonable limit)
-    max_recs = min(request.max_recommendations or 15, 150)
+    max_recs = min(request.requested_count, 150)
+    
+    print(f"📊 Book recommendations request:")
+    print(f"   Query: {request.query}")
+    print(f"   Count from frontend: {request.count}")
+    print(f"   Max recommendations (legacy): {request.max_recommendations}")
+    print(f"   Final count to use: {max_recs}")
     
     try:
         # Generate recommendations using Gemini

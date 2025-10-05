@@ -40,13 +40,19 @@ class Book(BaseModel):
 class BookRecommendationRequest(BaseModel):
     """Schema for book recommendation request"""
     query: str
-    max_recommendations: Optional[int] = 5
+    count: Optional[int] = None  # Frontend sends 'count'
+    max_recommendations: Optional[int] = None  # Legacy field
+    
+    @property
+    def requested_count(self) -> int:
+        """Get the requested count from either field, default to 20"""
+        return self.count or self.max_recommendations or 20
     
     class Config:
         json_schema_extra = {
             "example": {
                 "query": "psychological thrillers with a twist ending",
-                "max_recommendations": 5
+                "count": 20
             }
         }
 
