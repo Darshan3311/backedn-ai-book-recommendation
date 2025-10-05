@@ -51,8 +51,7 @@ app.add_middleware(
         "http://127.0.0.1:3001",
         "http://127.0.0.1:5173",
         "http://localhost:8080",
-        "https://frontend-ai-book-recommendation-3.onrender.com",
-        "https://frontend-ai-book-recommendation.onrender.com"
+        "https://frontend-ai-book-recommendation-4.onrender.com"
     ],  # Frontend origins
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
