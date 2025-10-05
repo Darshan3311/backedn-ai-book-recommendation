@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
 
 
@@ -12,6 +12,7 @@ class Book(BaseModel):
     year_published: Optional[int] = None
     rating: Optional[float] = None
     cover_image_url: Optional[str] = None
+    book_links: Optional[List[Dict[str, str]]] = None  # Official purchase/access links
     language: Optional[str] = None
     target_audience: Optional[str] = None
     book_type: Optional[str] = None
@@ -28,6 +29,11 @@ class Book(BaseModel):
                 "year_published": 2019,
                 "rating": 4.2,
                 "cover_image_url": "https://example.com/cover.jpg",
+                "book_links": [
+                    {"source": "Amazon", "url": "https://www.amazon.com/s?k=The+Silent+Patient"},
+                    {"source": "Google Books", "url": "https://books.google.com/books?q=The+Silent+Patient"},
+                    {"source": "Goodreads", "url": "https://www.goodreads.com/search?q=The+Silent+Patient"}
+                ],
                 "language": "English",
                 "target_audience": "adult",
                 "book_type": "fiction",

@@ -135,6 +135,11 @@ RETURN ONLY a valid JSON array with EXACTLY {max_recommendations} books in this 
         "genre": "Primary genre (must match query)",
         "year_published": year_or_null,
         "rating": float_or_null,
+        "book_links": [
+            {{"source": "Amazon", "url": "https://www.amazon.com/s?k=BOOK_TITLE+AUTHOR"}},
+            {{"source": "Google Books", "url": "https://books.google.com/books?q=BOOK_TITLE+AUTHOR"}},
+            {{"source": "Goodreads", "url": "https://www.goodreads.com/search?q=BOOK_TITLE"}}
+        ],
         "language": "EXACT_LANGUAGE_FROM_QUERY",
         "target_audience": "children|young_adult|adult|general",
         "book_type": "fiction|non_fiction|biography|memoir|textbook|reference",
@@ -553,7 +558,24 @@ CRITICAL: Return ONLY the JSON array with {max_recommendations} books, no markdo
             description += f"This volume perfectly matches your search for '{query}', featuring authentic {genre.lower()} narratives "
             description += f"that capture the essence of the genre. Essential reading for enthusiasts and newcomers alike."
             
-            # Generate appropriate metadata
+            # Generate appropriate metadata with realistic book source links
+            # Create search URLs for major book platforms
+            title_query = title.replace(' ', '+')
+            author_query = author.replace(' ', '+')
+            
+            book_links = [
+                {"source": "Amazon", "url": f"https://www.amazon.com/s?k={title_query}"},
+                {"source": "Google Books", "url": f"https://books.google.com/books?q={title_query}+{author_query}"},
+                {"source": "Goodreads", "url": f"https://www.goodreads.com/search?q={title_query}"},
+            ]
+            
+            # Add Archive.org for public domain or older books
+            if (2018 + (i % 7)) < 2000:
+                book_links.append({
+                    "source": "Internet Archive",
+                    "url": f"https://archive.org/search?query={title_query}+{author_query}"
+                })
+            
             synthetic_books.append({
                 "title": title,
                 "author": author,
@@ -568,7 +590,8 @@ CRITICAL: Return ONLY the JSON array with {max_recommendations} books, no markdo
                 "target_audience": "adult" if genre in ["Horror", "Romance", "Thriller/Suspense"] else "general",
                 "book_type": "non_fiction" if genre in ["Biography/Memoir", "History", "Science (Non-Fiction)", "Historical Biography"] else "fiction",
                 "content_type": "anthology" if "collection" in title.lower() or "anthology" in title.lower() else "novel",
-                "reading_level": "intermediate"
+                "reading_level": "intermediate",
+                "book_links": book_links  # Add official book source links
             })
         
         print(f"📚 Generated {len(synthetic_books)} high-quality synthetic books matching '{query}'")
