@@ -171,8 +171,8 @@ CRITICAL: Return ONLY the JSON array with {max_recommendations} books, no markdo
         
         try:
             # Try gemini-2.0-flash-exp first (experimental with relaxed filters)
-            # If that fails, use the standard gemini-1.5-flash
-            model_names = ['gemini-2.0-flash-exp', 'gemini-1.5-flash']
+            # If that fails, use gemini-2.5-flash or gemini-2.0-flash
+            model_names = ['gemini-2.0-flash-exp', 'gemini-2.5-flash', 'gemini-2.0-flash']
             content = None  # Initialize to track if we got a response
             model = None
             safety_settings = None
